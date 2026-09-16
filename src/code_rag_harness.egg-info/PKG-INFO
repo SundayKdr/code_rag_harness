@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: code-rag-harness
+Version: 0.1.0
+Summary: Local code knowledge RAG harness
+Requires-Python: >=3.11
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: langgraph
+Requires-Dist: langchain-core
+Requires-Dist: openai
+Requires-Dist: httpx
+Requires-Dist: pydantic-settings
+Requires-Dist: tenacity
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
