@@ -2,8 +2,10 @@ import json
 import os
 from pathlib import Path
 
-from harness.common.revision import RevisionInfo
-
+from harness.common.revision import (
+    RevisionInfo,
+    RevisionStatus,
+)
 
 class RevisionStore:
     def __init__(self, registry_path: Path) -> None:
@@ -48,16 +50,15 @@ class RevisionStore:
 
         return result
 
+
     def find_by_commit(
         self,
         repository_id: str,
         commit_sha: str,
     ) -> RevisionInfo | None:
 
-        for revision in self.list(
-            repository_id=repository_id,
-        ):
-            if revision.commit_sha == commit_sha:
+        for revision in self.list(repository_id=repository_id,):
+            if (revision.commit_sha == commit_sha and revision.status != RevisionStatus.FAILED):
                 return revision
 
         return None

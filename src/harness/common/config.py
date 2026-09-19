@@ -72,6 +72,14 @@ class Settings(BaseSettings):
             / "revisions.json"
         )
 
+    @property
+    def repository_mirror_root(self) -> Path:
+        return self.repository_data_root / "mirrors"
+
+    @property
+    def revision_materialization_root(self) -> Path:
+        return self.repository_data_root / "materialized"
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

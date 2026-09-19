@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 class RevisionStatus(StrEnum):
     REGISTERED = "registered"
+    MATERIALIZING = "materializing"
+    MATERIALIZED = "materialized"
     INDEXING = "indexing"
     READY = "ready"
     FAILED = "failed"
@@ -14,7 +16,9 @@ class RevisionStatus(StrEnum):
 class RevisionInfo(BaseModel):
     revision_id: str
     repository_id: str
-
+    materialized_path: str | None = None
+    materialized_at: datetime | None = None
+    
     requested_ref: str
     commit_sha: str
 

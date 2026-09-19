@@ -15,7 +15,9 @@ from harness.indexing.models import (
 )
 from harness.indexing.repository_manager import RepositoryManager
 from harness.indexing.revision_manager import RevisionManager
-
+from harness.indexing.materialization_manager import (
+    MaterializationManager,
+)
 
 @asynccontextmanager
 async def lifespan(
@@ -27,7 +29,6 @@ async def lifespan(
     repository_store = RepositoryStore(
         settings.repository_registry_path,
     )
-
     revision_store = RevisionStore(
         settings.revision_registry_path,
     )
@@ -36,11 +37,19 @@ async def lifespan(
         settings=settings,
         store=repository_store,
     )
-
     revision_manager = RevisionManager(
         settings=settings,
         repository_store=repository_store,
         revision_store=revision_store,
+    )
+    materialization_manager = MaterializationManager(
+        settings=settings,
+        repository_store=repository_store,
+        revision_store=revision_store,
+    )
+
+    app.state.materialization_manager = (
+        materialization_manager
     )
 
     app.state.settings = settings
@@ -185,3 +194,34 @@ async def list_repositories(
     )
 
     return store.list()
+
+
+@app.post(
+    "/v1/revisions/{revision_id}/materialize",
+    response_model=RevisionInfo,
+)
+async def materialize_revision(
+    revision_id: str,
+    request: Request,
+) -> RevisionInfo:
+
+    manager: MaterializationManager = (
+        request.app.state.materialization_manager
+    )
+
+    try:
+        return await manager.materialize(
+            revision_id
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        ) from exc
