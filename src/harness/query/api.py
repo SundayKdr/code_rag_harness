@@ -17,7 +17,10 @@ from harness.query.models import (
     HealthResponse,
     QueryPlan,
     TokenUsage,
+    SearchRecord
 )
+from harness.query.search.router import SearchRouter
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -30,13 +33,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.revision_registry_path,
     )
     app.state.revision_store = revision_store
-    graph = build_graph(llm)
+    search_router = SearchRouter()
+    graph = build_graph(llm, search_router)
 
     app.state.settings = settings
     app.state.llm = llm
     app.state.repository_store = repository_store
     app.state.graph = graph
-
+    app.state.search_router = search_router
+    
     yield
 
     await llm.close()
@@ -107,14 +112,24 @@ async def ask(payload: AskRequest, request: Request) -> AskResponse:
     graph = request.app.state.graph
     try:
 	    result = await graph.ainvoke(
-            {
-    	        "request_id": request_id,
-    	        "revision_id": revision.revision_id,
-    	        "repository_id": revision.repository_id,
-    	        "commit_sha": revision.commit_sha,
-    	        "question": payload.question,
-    	    }
-    	)
+        {
+            "request_id": request_id,
+            "revision_id": revision.revision_id,
+            "repository_id": revision.repository_id,
+            "commit_sha": revision.commit_sha,
+            "question": payload.question,
+            "iteration": 0,
+            "max_iterations":
+                request.app.state.settings
+                .query_max_search_iterations,
+            "evidence": [],
+            "search_trace": [],
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+        )
+
     except Exception as exc:
         raise HTTPException(
             status_code=502,
@@ -139,4 +154,10 @@ async def ask(payload: AskRequest, request: Request) -> AskResponse:
                 "total_tokens", 0
             ),
         ),
+        search_trace=[
+            SearchRecord.model_validate(item)
+            for item in result.get(
+                "search_trace", []
+            )
+        ],
     )

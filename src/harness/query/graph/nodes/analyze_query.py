@@ -133,18 +133,26 @@ def build_analyze_query_node(
             },
         ]
 
-        plan = await llm.complete_json(
-            messages,
-            QueryPlan,
-            temperature=0.0,
-            max_tokens=1200,
-        )
+        result = await llm.complete_json(
+			messages,
+		    QueryPlan,
+		    temperature=0.0,
+		    max_tokens=1200,
+		)
 
-        # Это поле определяем мы, а не LLM.
+        plan = result.value
         plan.original_question = question
 
         return {
             "query_plan": plan.model_dump(),
-        }
-
+            "prompt_tokens": (
+                state.get("prompt_tokens", 0) + result.prompt_tokens
+            ),
+            "completion_tokens": (
+                state.get("completion_tokens", 0) + result.completion_tokens
+            ),
+            "total_tokens": (
+                state.get("total_tokens", 0) + result.total_tokens
+            ),
+        }    	          
     return analyze_query

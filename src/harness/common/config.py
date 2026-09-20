@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2048
     llm_temperature: float = 0.1
 
+    query_max_search_iterations: int = 5
+
     # Общие данные indexing/query сервисов.
     repository_data_root: Path = Path(
         "/home/code-rag-data"

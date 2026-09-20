@@ -23,6 +23,36 @@ class GraphDirection(StrEnum):
     CALLEES = "callees"
     BOTH = "both"
 
+class SearchAction(StrEnum):
+    LEXICAL_SEARCH = "lexical_search"
+    SEMANTIC_SEARCH = "semantic_search"
+    FIND_SYMBOL = "find_symbol"
+    FIND_REFERENCES = "find_references"
+    FIND_CALLERS = "find_callers"
+    FIND_CALLEES = "find_callees"
+    DATA_FLOW = "data_flow"
+    READ_FILE = "read_file"
+    FINISH = "finish"
+
+class SearchRecord(BaseModel):
+    iteration: int
+    action: SearchAction
+    query: str | None = None
+    symbol_id: str | None = None
+    symbol_name: str | None = None
+    file_path: str | None = None
+    result_count: int = 0
+    error: str | None = None
+
+class SearchDecision(BaseModel):
+    action: SearchAction
+    query: str | None = None
+    symbol_id: str | None = None
+    symbol_name: str | None = None
+    file_path: str | None = None
+    rationale: str
+    expected_evidence: str
+
 
 class QueryPlan(BaseModel):
     original_question: str
@@ -70,6 +100,9 @@ class AskResponse(BaseModel):
     revision_id: str
     answer: str
     query_plan: QueryPlan
+    search_trace: list[SearchRecord] = Field(
+        default_factory=list,
+    )
     usage: TokenUsage
 
 class HealthResponse(BaseModel):
@@ -77,3 +110,36 @@ class HealthResponse(BaseModel):
     llm_status: str
     llm_model: str
 
+class EvidenceItem(BaseModel):
+    type: str
+    source: str
+
+    content: str
+
+    symbol_id: str | None = None
+    symbol_name: str | None = None
+
+    file_path: str | None = None
+    start_line: int | None = None
+    end_line: int | None = None
+
+    metadata: dict[str, str] = Field(
+        default_factory=dict,
+    )
+
+
+class EvidenceEvaluation(BaseModel):
+    sufficient: bool
+
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    missing_information: list[str] = Field(
+        default_factory=list,
+    )
+
+    suggested_actions: list[SearchAction] = Field(
+        default_factory=list,
+    )

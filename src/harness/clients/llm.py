@@ -12,6 +12,7 @@ from openai import (
 )
 from openai.types.chat import ChatCompletionMessageParam
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from typing import Generic, Sequence, TypeVar
 
 from harness.common.config import Settings
 
@@ -19,6 +20,20 @@ from harness.common.config import Settings
 class LlmError(RuntimeError):
     """Ошибка обращения к основной LLM."""
 
+
+def _strip_json_fence(text: str) -> str:
+    text = text.strip()
+
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+
+        if first_newline != -1:
+            text = text[first_newline + 1:]
+
+        if text.endswith("```"):
+            text = text[:-3]
+
+    return text.strip()
 
 @dataclass(frozen=True, slots=True)
 class LlmResult:
@@ -36,6 +51,14 @@ _RETRYABLE_ERRORS = (
 )
 
 T = TypeVar("T", bound=BaseModel)
+
+@dataclass(frozen=True, slots=True)
+class StructuredLlmResult(Generic[T]):
+    value: T
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
 
 class LlmClient:
     def __init__(self, settings: Settings) -> None:
@@ -108,18 +131,22 @@ class LlmClient:
         *,
         temperature: float = 0.0,
         max_tokens: int | None = None,
-    ) -> T:
-        result = await self.complete(
-            messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-
+	) -> StructuredLlmResult[T]:
+        result = await self.complete(messages, temperature=temperature, max_tokens=max_tokens)
+        stripped_text = _strip_json_fence(result.text)
         try:
-            return response_model.model_validate_json(result.text)
-
+            value = response_model.model_validate_json(stripped_text)
         except Exception as exc:
             raise LlmError(
-                f"Failed to parse LLM response as "
-                f"{response_model.__name__}: {result.text}"
-                ) from exc
+	            f"Failed to parse LLM response as "
+	            f"{response_model.__name__}: "
+	            f"{result.text}"
+	        ) from exc
+
+        return StructuredLlmResult(
+            value=value,
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            total_tokens=result.total_tokens,
+        )
+
