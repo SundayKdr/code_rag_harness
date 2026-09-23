@@ -37,15 +37,21 @@ class RepositoryStore:
     def put(
         self,
         repository: RepositoryInfo,
-    ) -> None:
+    ) -> RepositoryInfo:
 
         repositories = self._load()
 
+        existing_rep = next((existing_rep for existing_rep in repositories.values() if existing_rep["remote_url"] == repository.remote_url), None,)
+
+        if existing_rep:
+            return RepositoryInfo.model_validate(existing_rep)
+        
         repositories[repository.repository_id] = (
             repository.model_dump(mode="json")
         )
 
         self._store(repositories)
+        return repositories[repository.repository_id]
 
     def _load(self) -> dict[str, dict]:
         if not self._path.exists():

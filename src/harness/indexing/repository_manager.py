@@ -36,9 +36,7 @@ class RepositoryManager:
                 f"Unsupported repository source: {type(source)}"
             )
 
-        self._store.put(repository)
-
-        return repository
+        return self._store.put(repository)
 
     def _register_local(
         self,

@@ -15,7 +15,10 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from typing import Generic, Sequence, TypeVar
 
 from harness.common.config import Settings
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class LlmError(RuntimeError):
     """Ошибка обращения к основной LLM."""
@@ -96,6 +99,13 @@ class LlmClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> LlmResult:
+        
+        logger.info(
+            "LLM request model=%s messages=%d",
+            self._settings.llm_model,
+            len(messages),
+        )
+
         completion = await self._client.chat.completions.create(
             model=self._settings.llm_model,
             messages=list(messages),
@@ -109,6 +119,11 @@ class LlmClient:
                 if max_tokens is None
                 else max_tokens
             ),
+        )
+
+        logger.info(
+            "LLM response model=%s",
+            self._settings.llm_model
         )
 
         text = completion.choices[0].message.content
@@ -140,7 +155,7 @@ class LlmClient:
             raise LlmError(
 	            f"Failed to parse LLM response as "
 	            f"{response_model.__name__}: "
-	            f"{result.text}"
+	            f"{stripped_text}"
 	        ) from exc
 
         return StructuredLlmResult(
